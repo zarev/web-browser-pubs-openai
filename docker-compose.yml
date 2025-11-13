@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    container_name: publication_harvester_backend
+    environment:
+      - POSTGRES_URL=postgresql://postgres:postgres@db:5432/publications
+      - GEMINI_API_KEY=your_gemini_key_here
+      - OPENAI_API_KEY=your_openai_key_here
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    container_name: publications_db
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=publications
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
