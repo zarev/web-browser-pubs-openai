@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
 
 from pipelines.send_to_gemini import markdown_from_pdf
 
