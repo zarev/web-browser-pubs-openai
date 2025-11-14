@@ -12,8 +12,9 @@ from browser_agent.agent import BrowserUseAgent
 async def main() -> None:
     agent = BrowserUseAgent()
     task = (
-        "Go to https://journals.aps.org/ . Navigate to PRX, list a few recent articles and their PDF links in JSON."
-        " Capture screenshots before leaving each page."
+        "Go to https://journals.aps.org/ . Navigate to PRX, list all oo
+        pen source articles and their PDF links in JSON."
+        " Capture full page screenshots before leaving each page."
     )
     result: Any = await agent.run_with_gemini_fallback(task)
     print(json.dumps(result, indent=2, default=str))
