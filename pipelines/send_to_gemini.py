@@ -39,7 +39,7 @@ async def markdown_from_pdf(pdf_path: Path | str) -> str:
     def _run():
         data = pdf_path.read_bytes()
         response = model.generate_content([
-            "Convert this PDF into clean Markdown.",
+            "Convert this PDF into clean Markdown. Each section and subsection must be clearly identified with markdown format. If it's missing after the conversion you must infer it. ",
             {"mime_type": "application/pdf", "data": data},
         ])
         return response.text or ""
