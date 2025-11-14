@@ -167,3 +167,60 @@ The backend will be available at `http://localhost:8000`
 - `POST /crawl` - Start a new crawl job
 - `GET /job-status/{job_id}` - Check job status
 - `POST /manual-pdf-submit` - Submit manually extracted PDF URLs
+
+---
+
+## Browser automation with BrowserUse
+
+When a source needs full browser automation or Cloudflare handling, run the BrowserUse agent
+instead of the lightweight FastAPI crawler.
+
+### Install dependencies
+
+```bash
+cd /workspaces/web-browser-pubs-openai/backend
+pip install -r requirements.txt
+playwright install chromium
+```
+
+Required environment variables:
+
+- `OPENAI_API_KEY` — for BrowserUse / OpenAI control
+- `GEMINI_API_KEY` — optional but recommended for screenshot/PDF fallback analysis
+
+### Directory layout
+
+- `browser_agent/` — BrowserUse wrapper, prompts, and custom tools (screenshot + PDF saver)
+- `pipelines/` — glue modules to move PDFs through Gemini and into Postgres/pgvector
+- `browser_main.py` — example async entry point that crawls PRX and prints harvested PDFs
+
+Both the agent and the tools automatically store PDFs under `data/raw_pdfs/` and screenshots
+under `data/screenshots/`. Create the directories or let the tools do it on first run.
+
+### Running the BrowserUse agent
+
+```bash
+python browser_main.py
+```
+
+The agent will:
+
+1. Navigate with Playwright and capture screenshots at each critical step.
+2. Call the `save_pdf` tool with `title` + `landing_url` (and only supply `url` when it already belongs to an approved open-access host) so downloads always happen via OA mirrors.
+3. When web extraction fails (e.g., Cloudflare), it automatically calls the Gemini fallback
+  helper to summarize screenshots and extract any visible PDF URLs.
+4. If Gemini responds that the model is overloaded, the agent automatically retries by cycling
+  through `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-2.5-image`, and `gemini-2.5-pro`
+  (in that order) before giving up.
+
+The downloader now rotates User-Agents, warms up landing pages, retries with exponential
+backoff, and inspects the response to make sure a genuine PDF is stored. Every harvest attempts
+an OA lookup by title across the trusted mirrors (arXiv, bioRxiv, medRxiv, HAL, Zenodo, OSF,
+NCBI) before touching any publisher link, and non-whitelisted hosts are ignored. Successful OA
+mirrors are registered in Postgres and every attempt is appended to `data/report.csv` with the
+status `DOWNLOADED`, `FAILED`, or `SKIPPED`.
+
+Use `pipelines/fetch_pdfs.py` inside your jobs to harvest a URL from the database and pipe the
+result onward to `pipelines/process_pdfs.py` (Gemini Markdown conversion) and
+`pipelines/insert_pgvector.py` (storage). Each module is intentionally thin so it can plug into
+the existing FastAPI background tasks without additional refactoring.
